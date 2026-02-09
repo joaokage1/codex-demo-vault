@@ -1,83 +1,122 @@
 package com.example.vault.cli;
 
-import com.example.vault.SecretManager;
-
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
-import java.util.Arrays;
+import java.security.GeneralSecurityException;
+import java.util.List;
 
 public class Main {
-    public static void main(String[] args) {
-        if (args.length < 1) {
+    public static void main(String[] args) throws Exception {
+        if (args.length == 0) {
             printUsage();
-            System.exit(1);
+            return;
         }
-
-        SecretManager manager = new SecretManager();
         String command = args[0];
-        try {
-            switch (command) {
-                case "add" -> handleAdd(manager, args);
-                case "get" -> handleGet(manager, args);
-                default -> {
-                    printUsage();
-                    System.exit(1);
-                }
+        switch (command) {
+            case "put" -> handlePut(args);
+            case "get" -> handleGet(args);
+            case "delete" -> handleDelete(args);
+            case "list" -> handleList(args);
+            default -> {
+                System.err.println("Unknown command: " + command);
+                printUsage();
             }
-        } catch (Exception ex) {
-            System.err.println("Error: " + ex.getMessage());
-            System.exit(2);
         }
     }
 
-    private static void handleAdd(SecretManager manager, String[] args) throws Exception {
-        if (args.length != 5) {
+    private static void handlePut(String[] args) throws IOException, GeneralSecurityException {
+        if (args.length < 7) {
             printUsage();
-            System.exit(1);
+            return;
         }
         Path storePath = Path.of(args[1]);
-        String alias = args[2];
-        String secret = readSecret(args[3]);
+        String secretPath = args[2];
+        String secret = args[3];
+        if ("-".equals(secret)) {
+            secret = readStdin();
+        }
+        char[] passphrase = args[4].toCharArray();
+        Path certificatePath = Path.of(args[5]);
+        Path policiesPath = Path.of(args[6]);
+
+        Commands commands = Commands.create(storePath, policiesPath, passphrase);
+        commands.put(certificatePath, secretPath, secret);
+    }
+
+    private static void handleGet(String[] args) throws IOException, GeneralSecurityException {
+        if (args.length < 6) {
+            printUsage();
+            return;
+        }
+        Path storePath = Path.of(args[1]);
+        String secretPath = args[2];
+        char[] passphrase = args[3].toCharArray();
         Path certificatePath = Path.of(args[4]);
+        Path policiesPath = Path.of(args[5]);
 
-        manager.addSecret(storePath, alias, secret, certificatePath);
-        System.out.println("Secret stored for alias: " + alias);
+        Commands commands = Commands.create(storePath, policiesPath, passphrase);
+        String secret = commands.get(certificatePath, secretPath);
+        System.out.println(secret);
     }
 
-    private static void handleGet(SecretManager manager, String[] args) throws Exception {
-        if (args.length != 6) {
+    private static void handleDelete(String[] args) throws IOException {
+        if (args.length < 6) {
             printUsage();
-            System.exit(1);
+            return;
         }
         Path storePath = Path.of(args[1]);
-        String alias = args[2];
-        Path keyStorePath = Path.of(args[3]);
-        char[] keyStorePassword = args[4].toCharArray();
-        String keyAlias = args[5];
+        String secretPath = args[2];
+        char[] passphrase = args[3].toCharArray();
+        Path certificatePath = Path.of(args[4]);
+        Path policiesPath = Path.of(args[5]);
 
         try {
-            String secret = manager.getSecret(storePath, alias, keyStorePath, keyStorePassword, keyAlias);
-            System.out.println(secret);
-        } finally {
-            Arrays.fill(keyStorePassword, '\0');
+            Commands commands = Commands.create(storePath, policiesPath, passphrase);
+            commands.delete(certificatePath, secretPath);
+        } catch (GeneralSecurityException exception) {
+            throw new IOException("Unable to initialize crypto", exception);
         }
+    }
+
+    private static void handleList(String[] args) throws IOException {
+        if (args.length < 6) {
+            printUsage();
+            return;
+        }
+        Path storePath = Path.of(args[1]);
+        String prefix = args[2];
+        char[] passphrase = args[3].toCharArray();
+        Path certificatePath = Path.of(args[4]);
+        Path policiesPath = Path.of(args[5]);
+
+        try {
+            Commands commands = Commands.create(storePath, policiesPath, passphrase);
+            List<String> paths = commands.list(certificatePath, prefix);
+            for (String path : paths) {
+                System.out.println(path);
+            }
+        } catch (GeneralSecurityException exception) {
+            throw new IOException("Unable to initialize crypto", exception);
+        }
+    }
+
+    private static String readStdin() throws IOException {
+        ByteArrayOutputStream output = new ByteArrayOutputStream();
+        byte[] buffer = new byte[1024];
+        int read;
+        while ((read = System.in.read(buffer)) >= 0) {
+            output.write(buffer, 0, read);
+        }
+        return output.toString(StandardCharsets.UTF_8).trim();
     }
 
     private static void printUsage() {
         System.out.println("Usage:");
-        System.out.println("  add <storePath> <alias> <secret|-> <certificatePath>");
-        System.out.println("  get <storePath> <alias> <keyStorePath> <keyStorePassword> <keyAlias>");
-        System.out.println();
-        System.out.println("Notes:");
-        System.out.println("  Use '-' for <secret> to read the secret from stdin.");
-    }
-
-    private static String readSecret(String secretArgument) throws IOException {
-        if ("-".equals(secretArgument)) {
-            byte[] input = System.in.readAllBytes();
-            return new String(input, StandardCharsets.UTF_8).trim();
-        }
-        return secretArgument;
+        System.out.println("  put <store> <path> <value|-> <passphrase> <cert> <policies>");
+        System.out.println("  get <store> <path> <passphrase> <cert> <policies>");
+        System.out.println("  delete <store> <path> <passphrase> <cert> <policies>");
+        System.out.println("  list <store> <prefix> <passphrase> <cert> <policies>");
     }
 }
