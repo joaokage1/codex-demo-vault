@@ -2,7 +2,10 @@ package com.example.vault.cli;
 
 import com.example.vault.SecretManager;
 
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
+import java.util.Arrays;
 
 public class Main {
     public static void main(String[] args) {
@@ -35,7 +38,7 @@ public class Main {
         }
         Path storePath = Path.of(args[1]);
         String alias = args[2];
-        String secret = args[3];
+        String secret = readSecret(args[3]);
         Path certificatePath = Path.of(args[4]);
 
         manager.addSecret(storePath, alias, secret, certificatePath);
@@ -53,13 +56,28 @@ public class Main {
         char[] keyStorePassword = args[4].toCharArray();
         String keyAlias = args[5];
 
-        String secret = manager.getSecret(storePath, alias, keyStorePath, keyStorePassword, keyAlias);
-        System.out.println(secret);
+        try {
+            String secret = manager.getSecret(storePath, alias, keyStorePath, keyStorePassword, keyAlias);
+            System.out.println(secret);
+        } finally {
+            Arrays.fill(keyStorePassword, '\0');
+        }
     }
 
     private static void printUsage() {
         System.out.println("Usage:");
-        System.out.println("  add <storePath> <alias> <secret> <certificatePath>");
+        System.out.println("  add <storePath> <alias> <secret|-> <certificatePath>");
         System.out.println("  get <storePath> <alias> <keyStorePath> <keyStorePassword> <keyAlias>");
+        System.out.println();
+        System.out.println("Notes:");
+        System.out.println("  Use '-' for <secret> to read the secret from stdin.");
+    }
+
+    private static String readSecret(String secretArgument) throws IOException {
+        if ("-".equals(secretArgument)) {
+            byte[] input = System.in.readAllBytes();
+            return new String(input, StandardCharsets.UTF_8).trim();
+        }
+        return secretArgument;
     }
 }

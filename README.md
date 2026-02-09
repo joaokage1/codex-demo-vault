@@ -17,6 +17,13 @@ java -cp target/classes com.example.vault.cli.Main \
   add ./secrets.properties db.password "super-secret" ./certs/public-cert.pem
 ```
 
+Add a secret from stdin (avoid shell history):
+
+```bash
+printf '%s' "super-secret" | java -cp target/classes com.example.vault.cli.Main \
+  add ./secrets.properties db.password - ./certs/public-cert.pem
+```
+
 Retrieve a secret (requires private key in PKCS#12 keystore):
 
 ```bash
