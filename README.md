@@ -204,6 +204,22 @@ secret-manager/
 
 ---
 
+## 🐳 Docker Compose
+
+Build and run the CLI through Docker Compose:
+
+```bash
+docker compose build
+
+docker compose run --rm vault-cli \
+  put ./secrets.properties db/prod/password "supersecret" \
+  "startup-passphrase" ./certs/client-cert.pem ./config/policies.json
+```
+
+The repository is mounted at `/work` in the container, so local files (store, certs, policies) can be referenced with the same relative paths.
+
+---
+
 ## 🧪 Testing & Validation
 
 ### Functional
