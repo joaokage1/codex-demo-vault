@@ -210,10 +210,55 @@ Build and run the CLI through Docker Compose:
 
 ```bash
 docker compose build
+```
 
+### End-to-end example (certificate + policy + put/get)
+
+1. Compute the certificate fingerprint that will identify the client:
+
+```bash
+CLIENT_FP=$(openssl x509 -in ./certs/client-cert.pem -noout -fingerprint -sha256 \
+  | cut -d= -f2 | tr -d ':')
+echo "$CLIENT_FP"
+```
+
+2. Create a policy file that grants this certificate access to a prefix (example: `db/prod/*`):
+
+```bash
+mkdir -p ./config
+cat > ./config/policies.json <<EOF
+[
+  {
+    "fingerprint": "${CLIENT_FP}",
+    "permissions": {
+      "read": ["db/prod/*"],
+      "write": ["db/prod/*"]
+    }
+  }
+]
+EOF
+```
+
+3. Put a secret with Docker Compose:
+
+```bash
 docker compose run --rm vault-cli \
   put ./secrets.properties db/prod/password "supersecret" \
   "startup-passphrase" ./certs/client-cert.pem ./config/policies.json
+```
+
+4. Get the secret back:
+
+```bash
+docker compose run --rm vault-cli \
+  get ./secrets.properties db/prod/password \
+  "startup-passphrase" ./certs/client-cert.pem ./config/policies.json
+```
+
+Expected output:
+
+```text
+supersecret
 ```
 
 The repository is mounted at `/work` in the container, so local files (store, certs, policies) can be referenced with the same relative paths.
