@@ -214,7 +214,17 @@ docker compose build
 
 ### End-to-end example (certificate + policy + put/get)
 
-1. Compute the certificate fingerprint that will identify the client:
+1. Create a client certificate (self-signed example for local testing):
+
+```bash
+mkdir -p ./certs
+openssl req -x509 -newkey rsa:4096 -sha256 -nodes -days 365 \
+  -keyout ./certs/client-key.pem \
+  -out ./certs/client-cert.pem \
+  -subj "/CN=vault-cli-client"
+```
+
+2. Compute the certificate fingerprint that will identify the client:
 
 ```bash
 CLIENT_FP=$(openssl x509 -in ./certs/client-cert.pem -noout -fingerprint -sha256 \
@@ -222,7 +232,7 @@ CLIENT_FP=$(openssl x509 -in ./certs/client-cert.pem -noout -fingerprint -sha256
 echo "$CLIENT_FP"
 ```
 
-2. Create a policy file that grants this certificate access to a prefix (example: `db/prod/*`):
+3. Create a policy file that grants this certificate access to a prefix (example: `db/prod/*`):
 
 ```bash
 mkdir -p ./config
@@ -239,7 +249,7 @@ cat > ./config/policies.json <<EOF
 EOF
 ```
 
-3. Put a secret with Docker Compose:
+4. Put a secret with Docker Compose:
 
 ```bash
 docker compose run --rm vault-cli \
@@ -247,7 +257,7 @@ docker compose run --rm vault-cli \
   "startup-passphrase" ./certs/client-cert.pem ./config/policies.json
 ```
 
-4. Get the secret back:
+5. Get the secret back:
 
 ```bash
 docker compose run --rm vault-cli \
