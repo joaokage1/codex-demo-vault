@@ -10,6 +10,36 @@ mvn -q -DskipTests package
 
 If Maven cannot download plugins due to network restrictions, use an offline cache or run in an environment with access to Maven Central.
 
+## Run with Docker Compose
+
+Build the image:
+
+```bash
+docker compose build
+```
+
+Run CLI commands from anywhere with Docker Compose (the repository is mounted into `/work` in the container):
+
+```bash
+docker compose run --rm vault-cli \
+  put ./secrets.properties db/prod/password "supersecret" \
+  "startup-passphrase" ./certs/client-cert.pem ./config/policies.json
+```
+
+```bash
+docker compose run --rm vault-cli \
+  get ./secrets.properties db/prod/password \
+  "startup-passphrase" ./certs/client-cert.pem ./config/policies.json
+```
+
+You can pass secrets over stdin too:
+
+```bash
+printf '%s' "supersecret" | docker compose run --rm -T vault-cli \
+  put ./secrets.properties db/prod/password - \
+  "startup-passphrase" ./certs/client-cert.pem ./config/policies.json
+```
+
 ## Prerequisites
 
 * Java 17+

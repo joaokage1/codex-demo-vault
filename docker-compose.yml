@@ -1,0 +1,10 @@
+services:
+  vault-cli:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: codex-demo-vault:latest
+    working_dir: /work
+    volumes:
+      - ./:/work
+    entrypoint: ["java", "-cp", "/app/vault.jar", "com.example.vault.cli.Main"]
