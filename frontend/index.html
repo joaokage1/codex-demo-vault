@@ -21,21 +21,10 @@
     <main class="content">
       <section class="card shared-config">
         <h2>Access Configuration</h2>
-        <p>Upload your certificate and policy file to authorize operations.</p>
-        <div class="grid-2">
-          <label>
-            Certificate (.pem)
-            <input type="file" id="certificate" accept=".pem,.crt,.cer,text/plain" />
-          </label>
-          <label>
-            Policy (.json)
-            <input type="file" id="policy" accept=".json,application/json,text/plain" />
-          </label>
-        </div>
-        <label>
-          Unseal passphrase
-          <input type="password" id="passphrase" placeholder="Enter startup passphrase" />
-        </label>
+        <p>
+          Certificate, policy, and unseal passphrase are auto-loaded by the backend
+          from container config (`/config`) and environment variables.
+        </p>
       </section>
 
       <section class="card panel" data-panel="put">

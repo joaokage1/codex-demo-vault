@@ -6,8 +6,12 @@ services:
     image: codex-demo-vault-backend:latest
     ports:
       - "8080:8080"
+    environment:
+      VAULT_UNSEAL_PASSPHRASE: ${VAULT_UNSEAL_PASSPHRASE:-changeit}
+      VAULT_CONFIG_DIR: /config
     volumes:
       - vault-data:/data
+      - ./config:/config:ro
 
   vault-frontend:
     build:

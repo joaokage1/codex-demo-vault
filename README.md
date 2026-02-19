@@ -407,8 +407,8 @@ This repository now includes a modern SPA for managing secrets.
 
 ### UI features
 
-- Upload client certificate (`.pem`) and policy file (`.json`)
-- Provide unseal passphrase
+- No upload required: backend auto-discovers client certificate (`.pem`) and policies (`.json`) from `./config`
+- Unseal passphrase is provided to backend via `VAULT_UNSEAL_PASSPHRASE` environment variable
 - Menu tabs for:
   - Put Secret
   - Retrieve Secret
@@ -417,11 +417,13 @@ This repository now includes a modern SPA for managing secrets.
 ### Start UI + API with Docker Compose
 
 ```bash
+export VAULT_UNSEAL_PASSPHRASE="startup-passphrase"
 docker compose up --build -d vault-backend vault-frontend
 ```
 
 - Frontend: `http://localhost:3000`
 - API health: `http://localhost:8080/api/health`
+- Place certificate and policy under `./config` (defaults searched: `*.pem`, `*.json`)
 
 ### Start only the frontend app (Docker)
 
@@ -441,4 +443,9 @@ python3 -m http.server 3000 --directory frontend
 
 Then open `http://localhost:3000`.
 
-The SPA calls the backend API at `http://localhost:8080/api` by default.
+The SPA calls the backend API at `/api` by default (same-origin through nginx proxy).
+
+
+### Why fetch errors are fixed
+
+The frontend now calls `/api` on the same origin, and nginx proxies `/api/*` to the backend service (`vault-backend:8080`). This removes browser cross-origin issues and avoids hardcoding `localhost:8080` in the SPA.

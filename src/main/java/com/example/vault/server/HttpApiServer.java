@@ -10,9 +10,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
+import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardOpenOption;
 import java.security.GeneralSecurityException;
 import java.util.List;
 import java.util.Map;
@@ -24,8 +24,11 @@ public class HttpApiServer {
     public static void main(String[] args) throws IOException {
         int port = Integer.parseInt(System.getenv().getOrDefault("VAULT_API_PORT", "8080"));
         Path dataDir = Path.of(System.getenv().getOrDefault("VAULT_DATA_DIR", "/data"));
+        Path configDir = Path.of(System.getenv().getOrDefault("VAULT_CONFIG_DIR", "/config"));
         Files.createDirectories(dataDir);
+
         Path storePath = dataDir.resolve("secrets.properties");
+        RuntimeConfig config = RuntimeConfig.load(configDir);
 
         HttpServer server = HttpServer.create(new InetSocketAddress(port), 0);
         server.setExecutor(Executors.newFixedThreadPool(8));
@@ -33,29 +36,29 @@ public class HttpApiServer {
         server.createContext("/api/put", exchange -> withJson(exchange, request -> {
             String path = requiredText(request, "path");
             String secret = requiredText(request, "secret");
-            Commands commands = commandsFor(storePath, request);
-            commands.put(writeTempFile(requiredText(request, "certificatePem"), ".pem"), path, secret);
+            Commands commands = Commands.create(storePath, config.policiesPath(), config.passphrase());
+            commands.put(config.certificatePath(), path, secret);
             return Map.of("status", "ok");
         }));
 
         server.createContext("/api/get", exchange -> withJson(exchange, request -> {
             String path = requiredText(request, "path");
-            Commands commands = commandsFor(storePath, request);
-            String secret = commands.get(writeTempFile(requiredText(request, "certificatePem"), ".pem"), path);
+            Commands commands = Commands.create(storePath, config.policiesPath(), config.passphrase());
+            String secret = commands.get(config.certificatePath(), path);
             return Map.of("status", "ok", "secret", secret);
         }));
 
         server.createContext("/api/list", exchange -> withJson(exchange, request -> {
             String prefix = request.path("prefix").asText("");
-            Commands commands = commandsFor(storePath, request);
-            List<String> secrets = commands.list(writeTempFile(requiredText(request, "certificatePem"), ".pem"), prefix);
+            Commands commands = Commands.create(storePath, config.policiesPath(), config.passphrase());
+            List<String> secrets = commands.list(config.certificatePath(), prefix);
             return Map.of("status", "ok", "items", secrets);
         }));
 
         server.createContext("/api/delete", exchange -> withJson(exchange, request -> {
             String path = requiredText(request, "path");
-            Commands commands = commandsFor(storePath, request);
-            commands.delete(writeTempFile(requiredText(request, "certificatePem"), ".pem"), path);
+            Commands commands = Commands.create(storePath, config.policiesPath(), config.passphrase());
+            commands.delete(config.certificatePath(), path);
             return Map.of("status", "ok");
         }));
 
@@ -65,7 +68,10 @@ public class HttpApiServer {
                 sendJson(exchange, 405, Map.of("error", "Method not allowed"));
                 return;
             }
-            sendJson(exchange, 200, Map.of("status", "up"));
+            sendJson(exchange, 200, Map.of(
+                    "status", "up",
+                    "certificatePath", config.certificatePath().toString(),
+                    "policiesPath", config.policiesPath().toString()));
         });
 
         server.start();
@@ -97,26 +103,12 @@ public class HttpApiServer {
         }
     }
 
-    private static Commands commandsFor(Path storePath, JsonNode request) throws IOException, GeneralSecurityException {
-        char[] passphrase = requiredText(request, "passphrase").toCharArray();
-        String policiesJson = requiredText(request, "policiesJson");
-        Path policyPath = writeTempFile(policiesJson, ".json");
-        return Commands.create(storePath, policyPath, passphrase);
-    }
-
     private static String requiredText(JsonNode request, String field) {
         String value = request.path(field).asText("").trim();
         if (value.isEmpty()) {
             throw new IllegalArgumentException("Missing required field: " + field);
         }
         return value;
-    }
-
-    private static Path writeTempFile(String content, String suffix) throws IOException {
-        Path path = Files.createTempFile("vault-ui-", suffix);
-        Files.writeString(path, content, StandardOpenOption.TRUNCATE_EXISTING);
-        path.toFile().deleteOnExit();
-        return path;
     }
 
     private static void sendJson(HttpExchange exchange, int status, Map<String, Object> payload) throws IOException {
@@ -132,6 +124,42 @@ public class HttpApiServer {
         exchange.getResponseHeaders().set("Access-Control-Allow-Origin", "*");
         exchange.getResponseHeaders().set("Access-Control-Allow-Headers", "Content-Type");
         exchange.getResponseHeaders().set("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
+    }
+
+    private static Path findRequired(Path explicitPath, Path directory, String glob, String label) throws IOException {
+        if (Files.exists(explicitPath)) {
+            return explicitPath;
+        }
+        try (DirectoryStream<Path> stream = Files.newDirectoryStream(directory, glob)) {
+            for (Path path : stream) {
+                if (Files.isRegularFile(path)) {
+                    return path;
+                }
+            }
+        }
+        throw new IllegalArgumentException("Unable to find " + label + ". Set explicit env var or add matching file under "
+                + directory + " with glob " + glob);
+    }
+
+    private record RuntimeConfig(Path certificatePath, Path policiesPath, char[] passphrase) {
+        static RuntimeConfig load(Path configDir) throws IOException {
+            Files.createDirectories(configDir);
+            Path certPath = findRequired(
+                    Path.of(System.getenv().getOrDefault("VAULT_CERT_PATH", configDir.resolve("client-cert.pem").toString())),
+                    configDir,
+                    "*.pem",
+                    "certificate PEM");
+            Path policiesPath = findRequired(
+                    Path.of(System.getenv().getOrDefault("VAULT_POLICIES_PATH", configDir.resolve("policies.json").toString())),
+                    configDir,
+                    "*.json",
+                    "policies JSON");
+            String passphrase = System.getenv().getOrDefault("VAULT_UNSEAL_PASSPHRASE", "");
+            if (passphrase.isBlank()) {
+                throw new IllegalArgumentException("Missing VAULT_UNSEAL_PASSPHRASE environment variable");
+            }
+            return new RuntimeConfig(certPath, policiesPath, passphrase.toCharArray());
+        }
     }
 
     @FunctionalInterface
