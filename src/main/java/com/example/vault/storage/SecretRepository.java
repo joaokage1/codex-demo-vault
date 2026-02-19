@@ -90,6 +90,26 @@ public class SecretRepository {
         return results;
     }
 
+
+    public List<String> listKeys(String path) throws IOException {
+        String normalized = path.endsWith("/") ? path : path + "/";
+        List<String> descendants = list(normalized);
+        List<String> keys = new ArrayList<>();
+        for (String descendant : descendants) {
+            String remainder = descendant.substring(normalized.length());
+            if (remainder.isEmpty()) {
+                continue;
+            }
+            int separator = remainder.indexOf('/');
+            String key = separator >= 0 ? remainder.substring(0, separator) : remainder;
+            if (!key.isEmpty() && !keys.contains(key)) {
+                keys.add(key);
+            }
+        }
+        keys.sort(Comparator.naturalOrder());
+        return keys;
+    }
+
     public Properties loadProperties() throws IOException {
         return StoreFile.load(storePath);
     }

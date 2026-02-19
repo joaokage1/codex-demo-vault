@@ -68,4 +68,14 @@ public class Commands {
         }
         return apiController.listSecrets(prefix, new ApiController.RequestContext(fingerprint));
     }
+
+    public List<String> keys(Path certificatePath, String path) throws IOException {
+        String fingerprint;
+        try {
+            fingerprint = authService.fingerprintForCertificate(certificatePath);
+        } catch (GeneralSecurityException exception) {
+            throw new IOException("Unable to read certificate fingerprint", exception);
+        }
+        return apiController.listKeys(path, new ApiController.RequestContext(fingerprint));
+    }
 }

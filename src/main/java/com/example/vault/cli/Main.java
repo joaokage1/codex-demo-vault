@@ -19,6 +19,7 @@ public class Main {
             case "get" -> handleGet(args);
             case "delete" -> handleDelete(args);
             case "list" -> handleList(args);
+            case "keys" -> handleKeys(args);
             default -> {
                 System.err.println("Unknown command: " + command);
                 printUsage();
@@ -102,6 +103,28 @@ public class Main {
         }
     }
 
+    private static void handleKeys(String[] args) throws IOException {
+        if (args.length < 6) {
+            printUsage();
+            return;
+        }
+        Path storePath = Path.of(args[1]);
+        String path = args[2];
+        char[] passphrase = args[3].toCharArray();
+        Path certificatePath = Path.of(args[4]);
+        Path policiesPath = Path.of(args[5]);
+
+        try {
+            Commands commands = Commands.create(storePath, policiesPath, passphrase);
+            List<String> keys = commands.keys(certificatePath, path);
+            for (String key : keys) {
+                System.out.println(key);
+            }
+        } catch (GeneralSecurityException exception) {
+            throw new IOException("Unable to initialize crypto", exception);
+        }
+    }
+
     private static String readStdin() throws IOException {
         ByteArrayOutputStream output = new ByteArrayOutputStream();
         byte[] buffer = new byte[1024];
@@ -118,5 +141,6 @@ public class Main {
         System.out.println("  get <store> <path> <passphrase> <cert> <policies>");
         System.out.println("  delete <store> <path> <passphrase> <cert> <policies>");
         System.out.println("  list <store> <prefix> <passphrase> <cert> <policies>");
+        System.out.println("  keys <store> <path> <passphrase> <cert> <policies>");
     }
 }
