@@ -449,3 +449,15 @@ The SPA calls the backend API at `/api` by default (same-origin through nginx pr
 ### Why fetch errors are fixed
 
 The frontend now calls `/api` on the same origin, and nginx proxies `/api/*` to the backend service (`vault-backend:8080`). This removes browser cross-origin issues and avoids hardcoding `localhost:8080` in the SPA.
+
+
+### Troubleshooting: `NoClassDefFoundError` and `502 Bad Gateway`
+
+If backend logs show `NoClassDefFoundError: com/fasterxml/jackson/databind/ObjectMapper`, it means runtime dependencies were not on the Java classpath. The Dockerfiles now copy all Maven-built jars and run with `-cp /app/*`, so dependencies like Jackson are available.
+
+A `502 Bad Gateway` from the frontend usually happens when `vault-backend` failed to start. After rebuilding, verify backend health:
+
+```bash
+docker compose up --build -d vault-backend vault-frontend
+curl http://localhost:8080/api/health
+```

@@ -11,6 +11,6 @@ RUN mvn -q -DskipTests package
 FROM eclipse-temurin:17-jre-jammy
 WORKDIR /app
 
-COPY --from=build /app/target/*.jar /app/vault.jar
+COPY --from=build /app/target/*.jar /app/
 
-ENTRYPOINT ["java", "-cp", "/app/vault.jar", "com.example.vault.cli.Main"]
+ENTRYPOINT ["java", "-cp", "/app/*", "com.example.vault.cli.Main"]
