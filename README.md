@@ -453,7 +453,7 @@ The frontend now calls `/api` on the same origin, and nginx proxies `/api/*` to 
 
 ### Troubleshooting: `NoClassDefFoundError` and `502 Bad Gateway`
 
-If backend logs show `NoClassDefFoundError: com/fasterxml/jackson/databind/ObjectMapper`, it means runtime dependencies were not on the Java classpath. The Dockerfiles now copy all Maven-built jars and run with `-cp /app/*`, so dependencies like Jackson are available.
+If backend logs show `NoClassDefFoundError: com/fasterxml/jackson/databind/ObjectMapper`, it means runtime dependencies were not on the Java classpath. The build now creates a shaded (fat) `vault.jar` via Maven Shade, and Docker runs that single jar so dependencies like Jackson are always on the runtime classpath.
 
 A `502 Bad Gateway` from the frontend usually happens when `vault-backend` failed to start. After rebuilding, verify backend health:
 
