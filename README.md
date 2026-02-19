@@ -423,4 +423,22 @@ docker compose up --build -d vault-backend vault-frontend
 - Frontend: `http://localhost:3000`
 - API health: `http://localhost:8080/api/health`
 
+### Start only the frontend app (Docker)
+
+If your backend API is already running separately, start only the UI service:
+
+```bash
+docker compose up --build -d vault-frontend
+```
+
+### Start only the frontend app (without Docker)
+
+You can also run the SPA as static files for development:
+
+```bash
+python3 -m http.server 3000 --directory frontend
+```
+
+Then open `http://localhost:3000`.
+
 The SPA calls the backend API at `http://localhost:8080/api` by default.
