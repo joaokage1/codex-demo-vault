@@ -157,7 +157,7 @@ No sessions, no tokens, no passwords.
 
 The CLI is a thin Java client responsible for:
 
-* Loading the client certificate (PKCS12)
+* Loading the client certificate (PEM X.509)
 * Establishing an mTLS connection
 * Sending commands to the server
 
@@ -174,6 +174,10 @@ java -cp target/classes com.example.vault.cli.Main \
 
 java -cp target/classes com.example.vault.cli.Main \
   list ./secrets.properties db/prod \
+  "startup-passphrase" ./certs/client-cert.pem ./config/policies.json
+
+java -cp target/classes com.example.vault.cli.Main \
+  keys ./secrets.properties db/prod \
   "startup-passphrase" ./certs/client-cert.pem ./config/policies.json
 ```
 
@@ -272,6 +276,49 @@ supersecret
 ```
 
 The repository is mounted at `/work` in the container, so local files (store, certs, policies) can be referenced with the same relative paths.
+
+### OpenSSL `ossl_store_handle_load_result:unsupported` troubleshooting
+
+If you see an error like:
+
+```text
+error:1608010C:STORE routines:ossl_store_handle_load_result:unsupported
+```
+
+you are usually passing a file in the wrong format to an `openssl x509` command.
+This project expects a **PEM-encoded X.509 certificate** for client identity
+(`client-cert.pem`), not a private key file and not a PKCS#12 (`.p12/.pfx`) bundle.
+
+Quick checks:
+
+```bash
+# Confirm the certificate file exists first
+ls -l ./certs/client-cert.pem
+
+# Should print certificate details if the file is a PEM certificate
+openssl x509 -in ./certs/client-cert.pem -noout -text
+
+# Verify the file actually contains a certificate block
+head -n 2 ./certs/client-cert.pem
+# Expect: -----BEGIN CERTIFICATE-----
+```
+
+If `ls` says `No such file or directory`, create the certificate before running
+`openssl x509`:
+
+```bash
+mkdir -p ./certs
+openssl req -x509 -newkey rsa:4096 -sha256 -nodes -days 365 \
+  -keyout ./certs/client-key.pem \
+  -out ./certs/client-cert.pem \
+  -subj "/CN=vault-cli-client"
+```
+
+If you only have a PKCS#12 bundle, extract the certificate first:
+
+```bash
+openssl pkcs12 -in ./certs/client.p12 -clcerts -nokeys -out ./certs/client-cert.pem
+```
 
 ---
 

@@ -103,12 +103,59 @@ java -cp target/classes com.example.vault.cli.Main \
   "startup-passphrase" ./certs/client-cert.pem ./config/policies.json
 ```
 
+### List keys in a path
+
+```bash
+java -cp target/classes com.example.vault.cli.Main \
+  keys ./secrets.properties db/prod \
+  "startup-passphrase" ./certs/client-cert.pem ./config/policies.json
+```
+
+This prints immediate key names under `db/prod`.
+
 ### Delete a secret
 
 ```bash
 java -cp target/classes com.example.vault.cli.Main \
   delete ./secrets.properties db/prod/password \
   "startup-passphrase" ./certs/client-cert.pem ./config/policies.json
+```
+
+
+## OpenSSL format error troubleshooting
+
+If OpenSSL prints:
+
+```text
+error:1608010C:STORE routines:ossl_store_handle_load_result:unsupported
+```
+
+it usually means the input passed to `openssl x509` is not a PEM certificate.
+Use the client certificate PEM (`client-cert.pem`), not the private key and not a PKCS#12 bundle.
+
+```bash
+# Confirm the certificate file exists first
+ls -l ./certs/client-cert.pem
+
+openssl x509 -in ./certs/client-cert.pem -noout -text
+head -n 2 ./certs/client-cert.pem
+# Expect: -----BEGIN CERTIFICATE-----
+```
+
+If you get `No such file or directory`, generate the cert first:
+
+```bash
+mkdir -p ./certs
+openssl req -x509 -newkey rsa:4096 -sha256 -nodes -days 365 \
+  -keyout ./certs/client-key.pem \
+  -out ./certs/client-cert.pem \
+  -subj "/CN=vault-cli-client"
+```
+
+If your cert is inside a `.p12/.pfx`, extract it first:
+
+```bash
+openssl pkcs12 -in ./certs/client.p12 -clcerts -nokeys -out ./certs/client-cert.pem
 ```
 
 ## Notes

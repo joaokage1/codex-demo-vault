@@ -71,11 +71,24 @@ public class ApiController {
     }
 
     public List<String> listSecrets(String prefix, RequestContext context) throws IOException {
-        requireRead(prefix, context);
         List<String> paths = repository.list(prefix);
         return paths.stream()
                 .filter(path -> policyService.canRead(context.fingerprint(), path))
                 .collect(Collectors.toList());
+    }
+
+    public List<String> listKeys(String path, RequestContext context) throws IOException {
+        List<String> keys = repository.listKeys(path);
+        return keys.stream()
+                .filter(key -> policyService.canRead(context.fingerprint(), pathWithKey(path, key)))
+                .collect(Collectors.toList());
+    }
+
+    private String pathWithKey(String path, String key) {
+        if (path.endsWith("/")) {
+            return path + key;
+        }
+        return path + "/" + key;
     }
 
     private void requireRead(String path, RequestContext context) {
