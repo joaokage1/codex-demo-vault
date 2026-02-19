@@ -398,3 +398,29 @@ If an attacker:
 * Steals a cert → revoke fingerprint
 
 This provides a **strong, auditable, and understandable security posture** for VM-scoped secret management.
+
+---
+
+## 🌐 Web SPA (Frontend + Backend API)
+
+This repository now includes a modern SPA for managing secrets.
+
+### UI features
+
+- Upload client certificate (`.pem`) and policy file (`.json`)
+- Provide unseal passphrase
+- Menu tabs for:
+  - Put Secret
+  - Retrieve Secret
+  - List Secrets
+
+### Start UI + API with Docker Compose
+
+```bash
+docker compose up --build -d vault-backend vault-frontend
+```
+
+- Frontend: `http://localhost:3000`
+- API health: `http://localhost:8080/api/health`
+
+The SPA calls the backend API at `http://localhost:8080/api` by default.

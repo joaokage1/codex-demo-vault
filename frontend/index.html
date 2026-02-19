@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Vault Secret Manager</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <h1>Vault UI</h1>
+      <p class="subtitle">Certificate-based secret manager</p>
+      <nav class="menu">
+        <button class="menu-item active" data-panel="put">Put Secret</button>
+        <button class="menu-item" data-panel="get">Retrieve Secret</button>
+        <button class="menu-item" data-panel="list">List Secrets</button>
+      </nav>
+    </aside>
+
+    <main class="content">
+      <section class="card shared-config">
+        <h2>Access Configuration</h2>
+        <p>Upload your certificate and policy file to authorize operations.</p>
+        <div class="grid-2">
+          <label>
+            Certificate (.pem)
+            <input type="file" id="certificate" accept=".pem,.crt,.cer,text/plain" />
+          </label>
+          <label>
+            Policy (.json)
+            <input type="file" id="policy" accept=".json,application/json,text/plain" />
+          </label>
+        </div>
+        <label>
+          Unseal passphrase
+          <input type="password" id="passphrase" placeholder="Enter startup passphrase" />
+        </label>
+      </section>
+
+      <section class="card panel" data-panel="put">
+        <h2>Put Secret</h2>
+        <label>Secret path <input type="text" id="putPath" placeholder="db/prod/password" /></label>
+        <label>Secret value <textarea id="putSecret" rows="4" placeholder="super-secret-value"></textarea></label>
+        <button id="putBtn" class="primary">Save secret</button>
+      </section>
+
+      <section class="card panel hidden" data-panel="get">
+        <h2>Retrieve Secret</h2>
+        <label>Secret path <input type="text" id="getPath" placeholder="db/prod/password" /></label>
+        <button id="getBtn" class="primary">Retrieve</button>
+        <label>Result <textarea id="getResult" rows="4" readonly></textarea></label>
+      </section>
+
+      <section class="card panel hidden" data-panel="list">
+        <h2>List Secrets</h2>
+        <label>Prefix <input type="text" id="listPrefix" placeholder="db/prod" /></label>
+        <button id="listBtn" class="primary">List</button>
+        <ul id="listResult"></ul>
+      </section>
+
+      <section class="card" id="statusCard">
+        <h3>Status</h3>
+        <pre id="status">Ready.</pre>
+      </section>
+    </main>
+  </div>
+
+  <script src="app.js" type="module"></script>
+</body>
+</html>

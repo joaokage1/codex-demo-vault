@@ -1,4 +1,24 @@
 services:
+  vault-backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    image: codex-demo-vault-backend:latest
+    ports:
+      - "8080:8080"
+    volumes:
+      - vault-data:/data
+
+  vault-frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    image: codex-demo-vault-frontend:latest
+    ports:
+      - "3000:80"
+    depends_on:
+      - vault-backend
+
   vault-cli:
     build:
       context: .
@@ -8,3 +28,6 @@ services:
     volumes:
       - ./:/work
     entrypoint: ["java", "-cp", "/app/vault.jar", "com.example.vault.cli.Main"]
+
+volumes:
+  vault-data:
